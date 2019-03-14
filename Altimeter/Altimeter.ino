@@ -5,7 +5,7 @@
 
 #define SDI A4
 #define SCK A5
-#define SEALEVELPRESSURE_HPA (1019) //(1013.25)
+#define SEALEVELPRESSURE_HPA (1019) //https://weather.us/observations/air-pressure-station.html
 
 Adafruit_BMP3XX bmp;
 
