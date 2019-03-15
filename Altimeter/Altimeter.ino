@@ -9,7 +9,6 @@
 Adafruit_BMP3XX bmp;
 
 void setup() {
-    pinMode(13,HIGH);
     Serial.begin(115200);
     while (!Serial);
     if (!bmp.begin()) {
