@@ -3,15 +3,13 @@
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
 
-#define SDI A4
-#define SCK A5
-#define B
 #define SEALEVELPRESSURE_HPA (1019) //https://weather.us/observations/air-pressure-station.html
+#define BMP3XX_DEBUG
 
 Adafruit_BMP3XX bmp;
 
 void setup() {
-    pinMode(13, OUTPUT);
+    pinMode(13,HIGH);
     Serial.begin(115200);
     while (!Serial);
     if (!bmp.begin()) {
@@ -25,4 +23,5 @@ void setup() {
 
 void loop() {
     Serial.println(bmp.readAltitude(SEALEVELPRESSURE_HPA));
+    delay(1000);
 }
