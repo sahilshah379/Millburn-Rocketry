@@ -4,11 +4,11 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 
-#define SEALEVELPRESSURE_HPA (1019) //https://weather.us/observations/air-pressure-station.html
+#define SEALEVELPRESSURE_HPA (1007.5) //https://weather.us/observations/air-pressure-station.html
 
 const double mass = 360.0/1000; // kg
 const double parachuteArea = 1; // m^2
-const double dragCoefficient = 0.75;
+const double dragCoefficient = 1.5;
 const double finalAltitude = 856; // m
 const double endTime = 43; // s  -  43 to 46
 
@@ -48,7 +48,7 @@ void loop() {
     delay(100);
 }
 
-double descentTime(double altitude, double pressure, double temperature) { // 
+double descentTime(double altitude, double pressure, double temperature) {
     double airDensity = pressure/(gasConstant*(temperature+273.15)); // kg/m^3  -  around 1.225
     double airResistance = ((airDensity*parachuteArea)/2)*dragCoefficient; // kg/m  -  around 0.24 for air
     double descentTime = sqrt(mass/(gravity*airResistance))*acosh(pow(e,((altitude*airResistance)/mass))); // s
