@@ -4,7 +4,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 
-#define SEALEVELPRESSURE_HPA (1007.5) //https://weather.us/observations/air-pressure-station.html
+#define SEALEVELPRESSURE_HPA (1023) //https://weather.us/observations/air-pressure-station.html
 
 const double mass = 360.0/1000; // kg
 const double parachuteArea = 1; // m^2
@@ -17,15 +17,17 @@ const double e = 2.71828;
 const double gasConstant = 287.058;
 
 double start;
-boolean pass;
+double initialAltitude;
 
 Adafruit_BMP280 bme;
 
 void setup() {
     Serial.begin(9600);
+    pinMode(13,HIGH);
     start = millis();
-    pass = false;
-    if (!bme.begin()) {
+    if (bme.begin()) {
+        initialAltitude = bme.readAltitude(SEALEVELPRESSURE_HPA);
+    } else {
         Serial.println("Failed to find a BMP280 sensor");
         while (1);
     }
@@ -34,16 +36,19 @@ void setup() {
 void loop() {
     double temperature = bme.readTemperature(); // *C
     double pressure = bme.readPressure(); // Pa
-    double altitude = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
-    Serial.println(altitude);
+    double altitude = bme.readAltitude(SEALEVELPRESSURE_HPA) - initialAltitude; // m
     double now = millis();
-    double delta = descentTime(altitude, pressure, temperature);
-    if ((((now - start)/1000) > delta) && (pass == false)) {
-        pass = true;
-        delay(1000);
-    }
-    if ((((now - start)/1000) < delta) && (pass == true)) {
+    double timePassed = (now-start)/1000;
+    Serial.print(timePassed);
+    Serial.print(": ");
+    Serial.println(altitude);
+    double timeParachute = descentTime(altitude, pressure, temperature);
+    if ((timePassed + timeParachute) > endTime) {
+        digitalWrite(13,HIGH);
         Serial.println("Parachute");
+        while(1);
+    } else {
+        digitalWrite(13,LOW);
     }
     delay(100);
 }
