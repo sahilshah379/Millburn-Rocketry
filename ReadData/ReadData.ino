@@ -14,6 +14,8 @@ void setup() {
         while (1);
     }
     Serial.println("card initialized");
+    Serial.println();
+    
     int launchNumber = 1;
     String fileName = "launch" + String(launchNumber) + ".txt";
     while (SD.exists(fileName)) {
@@ -29,7 +31,7 @@ void setup() {
         }
         file.close();
     } else {
-        Serial.print("error opening ");
+        Serial.print("Error opening ");
         Serial.println(fileName);
     }
 }
