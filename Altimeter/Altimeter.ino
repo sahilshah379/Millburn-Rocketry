@@ -1,5 +1,6 @@
 #include <Wire.h>
 #include <SPI.h>
+#include <SD.h>
 #include <math.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
@@ -18,39 +19,67 @@ const double gasConstant = 287.058;
 
 double start;
 double initialAltitude;
-
+boolean launch;
+String fileName;
 Adafruit_BMP280 bme;
 
 void setup() {
     Serial.begin(9600);
+    while (!Serial) {
+        ;
+    }
     pinMode(13,HIGH);
-    start = millis();
+    launch = false;
+    
+    Serial.print("Initializing SD card... ");
+    if (!SD.begin(4)) {
+        Serial.println("failed to read SD card");
+    } else {
+        Serial.println("card initialized");
+        int launchNumber = 1;
+        fileName = "launch" + String(launchNumber) + ".txt";
+        while (SD.exists(fileName)) {
+            launchNumber += 1;
+            fileName = "launch" + String(launchNumber) + ".txt";
+        }
+    }
+    
     if (bme.begin()) {
-        initialAltitude = bme.readAltitude(SEALEVELPRESSURE_HPA);
+        initialAltitude = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
     } else {
         Serial.println("Failed to find a BMP280 sensor");
         while (1);
     }
+    Serial.println();
+    logData(String(fileName));
+    logData("does this work lol");
 }
 
 void loop() {
-    double temperature = bme.readTemperature(); // *C
-    double pressure = bme.readPressure(); // Pa
-    double altitude = bme.readAltitude(SEALEVELPRESSURE_HPA) - initialAltitude; // m
-    double now = millis();
-    double timePassed = (now-start)/1000;
-    Serial.print(timePassed);
-    Serial.print(": ");
-    Serial.println(altitude);
-    double timeParachute = descentTime(altitude, pressure, temperature);
-    if ((timePassed + timeParachute) > endTime) {
-        digitalWrite(13,HIGH);
-        Serial.println("Parachute");
-        while(1);
-    } else {
-        digitalWrite(13,LOW);
+    double currentAltitude = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
+    if (((currentAltitude - initialAltitude) > 3) and (launch == false)) {
+        launch = true;
+        start = millis();
+        logData("LAUNCH");
     }
-    delay(100);
+    if (launch == true) {
+        double altitude = currentAltitude - initialAltitude; // m
+        double temperature = bme.readTemperature(); // *C
+        double pressure = bme.readPressure(); // Pa
+        double now = millis();
+        double timePassed = (now-start)/1000;
+        String timeAltitude = String(timePassed,DEC) + ": " + String(altitude,DEC);
+        logData(timeAltitude);
+        double timeParachute = descentTime(altitude, pressure, temperature);
+        if ((timePassed + timeParachute) > endTime) {
+            digitalWrite(13,HIGH);
+            logData("PARACHUTE");
+            while(1);
+        } else {
+            digitalWrite(13,LOW);
+        }
+    }
+    delay(10);
 }
 
 double descentTime(double altitude, double pressure, double temperature) {
@@ -64,6 +93,14 @@ double acosh(double x) {
     return log(x+sqrt(pow(x,2)-1));
 }
 
+void logData(String data) {
+    File file = SD.open(fileName, FILE_WRITE);
+    if (file) {
+        file.println(data);
+        file.close();
+    }
+    Serial.println(data);
+}
 
 //http://www.ambrsoft.com/Physics/FreeFall/FreeFallWairResistance.htm
 //https://keisan.casio.com/exec/system/1231475371
