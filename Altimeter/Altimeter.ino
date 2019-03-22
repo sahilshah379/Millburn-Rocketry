@@ -5,7 +5,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 
-#define SEALEVELPRESSURE_HPA (1023) //https://weather.us/observations/air-pressure-station.html
+#define SEALEVELPRESSURE_HPA (995) //https://weather.us/observations/air-pressure-station.html
 
 const double seperatedMass = 350.0/1000; // kg
 const double parachuteArea = 1; // m^2
@@ -22,22 +22,23 @@ double start;
 double initialAltitude;
 double heighestAltitude = 0;
 boolean launch;
+boolean parachute;
 String fileName;
 Adafruit_BMP280 bme;
 
 void setup() {
-    Serial.begin(9600);
-    while (!Serial) {
-        ;
-    }
     pinMode(13,HIGH);
     launch = false;
+    parachute = false;
     
-    Serial.print("Initializing SD card... ");
     if (!SD.begin(4)) {
-        Serial.println("failed to read SD card");
+        while (1) {
+            digitalWrite(13,HIGH);
+            delay(100);
+            digitalWrite(13,LOW);
+            delay(100);
+        }
     } else {
-        Serial.println("card initialized");
         int launchNumber = 1;
         fileName = "launch" + String(launchNumber) + ".txt";
         while (SD.exists(fileName)) {
@@ -45,14 +46,22 @@ void setup() {
             fileName = "launch" + String(launchNumber) + ".txt";
         }
     }
-    
     if (bme.begin()) {
         initialAltitude = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
     } else {
-        Serial.println("Failed to find a BMP280 sensor");
-        while (1);
+        while (1) {
+            digitalWrite(13,HIGH);
+            delay(100);
+            digitalWrite(13,LOW);
+            delay(100);
+            if (bme.begin()) {
+                initialAltitude = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
+                logData("Found BMP280 sensor");
+                digitalWrite(13,HIGH);
+                break;
+            }
+        }
     }
-    Serial.println();
     logData(String(fileName));
 }
 
@@ -73,14 +82,27 @@ void loop() {
         }
         double timePassed = (now-start)/1000;
         String timeAltitude = String(timePassed,DEC) + ": " + String(altitude,DEC);
+        if (parachute == true) {
+            timeAltitude = "     " + timeAltitude;
+        }
         logData(timeAltitude);
         double timeParachute = descentTime(altitude, pressure, temperature);
         if (((timePassed + timeParachute) > endTime) && ((altitude + heightBuffer) < heighestAltitude)) {
-            digitalWrite(13,HIGH);
-            logData("PARACHUTE");
-            while(1);
+            if (parachute == false) {
+                logData("PARACHUTE");
+                parachute = true;
+            }
+        }
+        if ((parachute == true) && (altitude < heightBuffer)) {
+            logData("LAND");
+            while (1) {
+                digitalWrite(13,HIGH);
+                delay(1000);
+                digitalWrite(13,LOW);
+                delay(1000);
+            }
         } else {
-            digitalWrite(13,LOW);
+            digitalWrite(13,HIGH);
         }
     } else {
         digitalWrite(13,LOW);
@@ -105,7 +127,6 @@ void logData(String data) {
         file.println(data);
         file.close();
     }
-    Serial.println(data);
 }
 
 //http://www.ambrsoft.com/Physics/FreeFall/FreeFallWairResistance.htm
