@@ -7,11 +7,12 @@
 
 #define SEALEVELPRESSURE_HPA (1023) //https://weather.us/observations/air-pressure-station.html
 
-const double mass = 360.0/1000; // kg
+const double seperatedMass = 350.0/1000; // kg
 const double parachuteArea = 1; // m^2
 const double dragCoefficient = 1.5;
-const double finalAltitude = 856; // m
+const double finalAltitude = 856/3.2808; // m
 const double endTime = 43; // s  -  43 to 46
+const double heightBuffer = 2; // m  -  height to detect if the rocket launched and is descending
 
 const double gravity = 9.80665;
 const double e = 2.71828;
@@ -19,6 +20,7 @@ const double gasConstant = 287.058;
 
 double start;
 double initialAltitude;
+double heighestAltitude = 0;
 boolean launch;
 String fileName;
 Adafruit_BMP280 bme;
@@ -52,12 +54,11 @@ void setup() {
     }
     Serial.println();
     logData(String(fileName));
-    logData("does this work lol");
 }
 
 void loop() {
     double currentAltitude = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
-    if (((currentAltitude - initialAltitude) > 3) and (launch == false)) {
+    if (((currentAltitude - initialAltitude) > heightBuffer) and (launch == false)) {
         launch = true;
         start = millis();
         logData("LAUNCH");
@@ -67,17 +68,22 @@ void loop() {
         double temperature = bme.readTemperature(); // *C
         double pressure = bme.readPressure(); // Pa
         double now = millis();
+        if (altitude > heighestAltitude) {
+            heighestAltitude = altitude;
+        }
         double timePassed = (now-start)/1000;
         String timeAltitude = String(timePassed,DEC) + ": " + String(altitude,DEC);
         logData(timeAltitude);
         double timeParachute = descentTime(altitude, pressure, temperature);
-        if ((timePassed + timeParachute) > endTime) {
+        if (((timePassed + timeParachute) > endTime) && ((altitude + heightBuffer) < heighestAltitude)) {
             digitalWrite(13,HIGH);
             logData("PARACHUTE");
             while(1);
         } else {
             digitalWrite(13,LOW);
         }
+    } else {
+        digitalWrite(13,LOW);
     }
     delay(10);
 }
@@ -85,7 +91,7 @@ void loop() {
 double descentTime(double altitude, double pressure, double temperature) {
     double airDensity = pressure/(gasConstant*(temperature+273.15)); // kg/m^3  -  around 1.225
     double airResistance = ((airDensity*parachuteArea)/2)*dragCoefficient; // kg/m  -  around 0.24 for air
-    double descentTime = sqrt(mass/(gravity*airResistance))*acosh(pow(e,((altitude*airResistance)/mass))); // s
+    double descentTime = sqrt(seperatedMass/(gravity*airResistance))*acosh(pow(e,((altitude*airResistance)/seperatedMass))); // s
     return descentTime;
 }
 
