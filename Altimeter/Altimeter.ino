@@ -5,7 +5,10 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 
-#define SEALEVELPRESSURE_HPA (995) //https://weather.us/observations/air-pressure-station.html
+// max 908
+// speed 302
+
+#define SEALEVELPRESSURE_HPA (1023) //https://weather.us/observations/new-jersey/pressure-qnh/20190324-1400z.html
 
 const double seperatedMass = 350.0/1000; // kg
 const double parachuteArea = 1; // m^2
@@ -93,13 +96,17 @@ void loop() {
                 parachute = true;
             }
         }
-        if ((parachute == true) && (altitude < heightBuffer)) {
-            logData("LAND");
-            while (1) {
-                digitalWrite(13,HIGH);
-                delay(1000);
+        if (parachute == true) {
+            if (altitude < heightBuffer) {
+                logData("LAND");
+                while (1) {
+                    digitalWrite(13,HIGH);
+                    delay(1000);
+                    digitalWrite(13,LOW);
+                    delay(1000);
+                }
+            } else {
                 digitalWrite(13,LOW);
-                delay(1000);
             }
         } else {
             digitalWrite(13,HIGH);

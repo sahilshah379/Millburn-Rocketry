@@ -22,7 +22,8 @@ void setup() {
         launchNumber += 1;
         fileName = "launch" + String(launchNumber) + ".txt";
     }
-    fileName = "launch" + String(launchNumber-1) + ".txt";
+//    fileName = "launch" + String(launchNumber-1) + ".txt";
+    fileName = "launch3.txt";
     file = SD.open(fileName);
     if (file) {
         Serial.println();

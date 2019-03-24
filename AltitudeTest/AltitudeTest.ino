@@ -3,7 +3,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 
-#define SEALEVELPRESSURE_HPA (995) //https://weather.us/observations/air-pressure-station.html
+#define SEALEVELPRESSURE_HPA (1023) //https://weather.us/observations/new-jersey/pressure-qnh/20190324-1400z.html
 
 Adafruit_BMP280 bme;
 
