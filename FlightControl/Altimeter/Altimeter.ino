@@ -10,12 +10,12 @@
 
 #define SEALEVELPRESSURE_HPA (1023) //https://weather.us/observations/new-jersey/pressure-qnh/20190324-1400z.html
 
-const double seperatedMass = 350.0/1000; // kg
-const double parachuteArea = 1; // m^2
+const double seperatedMass = 370.0/1000; // kg
+const double parachuteArea = 2 * (Math.PI*Math.pow((15.5*2.54/2),2) - Math.PI*Math.pow((6*2.54/2),2)); // m^2
 const double dragCoefficient = 1.5;
 const double finalAltitude = 856/3.2808; // m
 const double endTime = 43; // s  -  43 to 46
-const double heightBuffer = 2; // m  -  height to detect if the rocket launched and is descending
+const double heightBuffer = 2; // m  -  height to determine the stage the rocket is currently in
 
 const double gravity = 9.80665;
 const double e = 2.71828;
@@ -23,7 +23,7 @@ const double gasConstant = 287.058;
 
 double start;
 double initialAltitude;
-double heighestAltitude = 0;
+double heighestAltitude;
 boolean launch;
 boolean parachute;
 String fileName;
@@ -33,6 +33,7 @@ void setup() {
     pinMode(13,HIGH);
     launch = false;
     parachute = false;
+    heighestAltitude = heightBuffer;
     
     if (!SD.begin(4)) {
         while (1) {
@@ -70,19 +71,19 @@ void setup() {
 
 void loop() {
     double currentAltitude = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
-    if (((currentAltitude - initialAltitude) > heightBuffer) and (launch == false)) {
+    double altitude = currentAltitude - initialAltitude; // m
+    if ((altitude > heightBuffer) and (launch == false)) {
         launch = true;
         start = millis();
         logData("LAUNCH");
     }
     if (launch == true) {
-        double altitude = currentAltitude - initialAltitude; // m
         double temperature = bme.readTemperature(); // *C
         double pressure = bme.readPressure(); // Pa
-        double now = millis();
         if (altitude > heighestAltitude) {
             heighestAltitude = altitude;
         }
+        double now = millis();
         double timePassed = (now-start)/1000;
         String timeAltitude = String(timePassed,DEC) + ": " + String(altitude,DEC);
         if (parachute == true) {
@@ -99,6 +100,7 @@ void loop() {
         if (parachute == true) {
             if (altitude < heightBuffer) {
                 logData("LAND");
+                // land stage
                 while (1) {
                     digitalWrite(13,HIGH);
                     delay(1000);
@@ -106,12 +108,15 @@ void loop() {
                     delay(1000);
                 }
             } else {
+                // parachute stage
                 digitalWrite(13,LOW);
             }
         } else {
+            // launch stage
             digitalWrite(13,HIGH);
         }
     } else {
+        // pre-launch stage
         digitalWrite(13,LOW);
     }
     delay(10);
