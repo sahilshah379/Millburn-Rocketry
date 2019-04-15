@@ -1,7 +1,10 @@
 import krpc
 import time
 
-conn = krpc.connect()
+conn = krpc.connect(
+	name='Connection Test',
+	address='192.168.86.60',
+	rpc_port=50000, stream_port=50001)
 vessel = conn.space_center.active_vessel
 
 vessel.control.activate_next_stage()
