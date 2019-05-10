@@ -11,7 +11,7 @@
 #define SEALEVELPRESSURE_HPA (1023) //https://weather.us/observations/new-jersey/pressure-qnh/20190324-1400z.html
 
 const double seperatedMass = 370.0/1000; // kg
-const double parachuteArea = 2 * (Math.PI*Math.pow((15.5*2.54/2),2) - Math.PI*Math.pow((6*2.54/2),2)); // m^2
+const double parachuteArea = 2 * (PI*pow((15.5*2.54/2),2) - PI*pow((6*2.54/2),2)); // m^2
 const double dragCoefficient = 1.5;
 const double finalAltitude = 856/3.2808; // m
 const double endTime = 43; // s  -  43 to 46
