@@ -1,15 +1,21 @@
 #include <MPU9250.h>
+#include "EEPROM.h"
 
 const float beta = 0.1f;
 const float sampleFreq = 512.0f;
 const float twoKp = 2.0f * 0.5f; // 2 * proportional gain
 const float twoKi = 2.0f * 0.0f; // 2 * integral gain
-volatile float integralFBx = 0.0f,  integralFBy = 0.0f, integralFBz = 0.0f;
-volatile float q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;
+float integralFBx = 0.0f,  integralFBy = 0.0f, integralFBz = 0.0f;
+float q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;
 
 MPU9250 IMU(Wire,0x68);
 int status;
-int ax,ay,az,gx,gy,gz,mx,my,mz,t;
+float ax,ay,az,gx,gy,gz,mx,my,mz,t;
+
+uint8_t EepromBuffer[48];
+float axb, axs, ayb, ays, azb, azs;
+float hxb, hxs, hyb, hys, hzb, hzs;
+
 
 void setup(){
     Serial.begin(115200);
@@ -24,14 +30,48 @@ void setup(){
         while(1) {}
     }
 
-    // setting the accelerometer full scale range to +/-8G 
-    IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);
-    // setting the gyroscope full scale range to +/-500 deg/s
-    IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);
-    // setting DLPF bandwidth to 20 Hz
-    IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
-    // setting SRD to 19 for a 50 Hz update rate
-    IMU.setSrd(19);
+    for (size_t i=0; i < sizeof(EepromBuffer); i++) {
+        EepromBuffer[i] = EEPROM.read(i);
+    }
+    
+    memcpy(&axb,EepromBuffer+0,4);
+    memcpy(&axs,EepromBuffer+4,4);
+    memcpy(&ayb,EepromBuffer+8,4);
+    memcpy(&ays,EepromBuffer+12,4);
+    memcpy(&azb,EepromBuffer+16,4);
+    memcpy(&azs,EepromBuffer+20,4);
+    memcpy(&hxb,EepromBuffer+24,4);
+    memcpy(&hxs,EepromBuffer+28,4);
+    memcpy(&hyb,EepromBuffer+32,4);
+    memcpy(&hys,EepromBuffer+36,4);
+    memcpy(&hzb,EepromBuffer+40,4);
+    memcpy(&hzs,EepromBuffer+44,4);
+    
+    IMU.setAccelCalX(axb,axs);
+    IMU.setAccelCalY(ayb,ays);
+    IMU.setAccelCalZ(azb,azs);
+    
+    IMU.setMagCalX(hxb,hxs);
+    IMU.setMagCalY(hyb,hys);
+    IMU.setMagCalZ(hzb,hzs);
+    
+//    // setting a 41 Hz DLPF bandwidth
+//    IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_41HZ);
+//    // setting SRD to 9 for a 100 Hz update rate
+//    IMU.setSrd(9);
+//    // enabling the data ready interrupt
+//    IMU.enableDataReadyInterrupt();
+//    // attaching the interrupt to microcontroller pin 1
+//    pinMode(1,INPUT);
+    
+//    // setting the accelerometer full scale range to +/-8G 
+//    IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);
+//    // setting the gyroscope full scale range to +/-500 deg/s
+//    IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);
+//    // setting DLPF bandwidth to 20 Hz
+//    IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
+//    // setting SRD to 19 for a 50 Hz update rate
+//    IMU.setSrd(19);
 }
 
 void loop(){
@@ -48,27 +88,76 @@ void loop(){
     my = IMU.getMagY_uT();
     mz = IMU.getMagZ_uT();
 
+
     t = IMU.getTemperature_C();
 
     MadgwickAHRSupdate(gx,gy,gz,ax,ay,az,mx,my,mz);
 //    MahonyAHRSupdate(gx,gy,gz,ax,ay,az,mx,my,mz);
-    Serial.print("Q0: "); Serial.println(q0);
-    Serial.print("Q1: "); Serial.println(q1);
-    Serial.print("Q2: "); Serial.println(q2);
-    Serial.print("Q3: "); Serial.println(q3);
-    delay(100);
+
+    float x = q1;
+    float y = q2;
+    float z = q3;
+
+//    Serial.print(x,4);
+//    Serial.print(" ");
+//    Serial.print(y,4);
+//    Serial.print(" ");
+//    Serial.println(z,4);
+
+    float pitch = getPitch(x,y,z);
+    float yaw = getYaw(x,y,z);
+    float roll = getRoll(x,y,z);
+
+    Serial.print(pitch,4);
+    Serial.print(" ");
+    Serial.print(yaw,4);
+    Serial.print(" ");
+    Serial.println(roll,4);
+
+//    Serial.print("Q0: ");
+//    Serial.print(q0,4);
+//    Serial.print(" ");
+//    Serial.print("Q1: ");
+//    Serial.print(q1,4);
+//    Serial.print(" ");
+//    Serial.print("Q2: ");
+//    Serial.print(q2,4);
+//    Serial.print(" ");
+//    Serial.print("Q3: ");
+//    Serial.println(q3,4);
+
+//    Serial.print(IMU.getAccelX_mss(),6);
+//    Serial.print("\t");
+//    Serial.print(IMU.getAccelY_mss(),6);
+//    Serial.print("\t");
+//    Serial.print(IMU.getAccelZ_mss(),6);
+//    Serial.print("\t");
+//    Serial.print(IMU.getGyroX_rads(),6);
+//    Serial.print("\t");
+//    Serial.print(IMU.getGyroY_rads(),6);
+//    Serial.print("\t");
+//    Serial.print(IMU.getGyroZ_rads(),6);
+//    Serial.print("\t");
+//    Serial.print(IMU.getMagX_uT(),6);
+//    Serial.print("\t");
+//    Serial.print(IMU.getMagY_uT(),6);
+//    Serial.print("\t");
+//    Serial.print(IMU.getMagZ_uT(),6);
+//    Serial.print("\t");
+//    Serial.println(IMU.getTemperature_C(),6);
+    delay(20);
 }
 
-double getPitch(int x, int y,int z) {
-    double pitch = 180*atan(x/sqrt((y*y)+(z*z)))/PI;
+float getPitch(float x, float y,float z) {
+    float pitch = 180*atan(x/sqrt((y*y)+(z*z)))/PI;
     return pitch;
 }
-double getRoll(int x, int y,int z) {
-    double roll = 180*atan(y/sqrt((x*x)+(z*z)))/PI;
+float getRoll(float x, float y,float z) {
+    float roll = 180*atan(y/sqrt((x*x)+(z*z)))/PI;
     return roll;
 }
-double getYaw(int x, int y,int z) {
-    double yaw = 180*atan(z/sqrt((x*x)+(z*z)))/PI;
+float getYaw(float x, float y,float z) {
+    float yaw = 180*atan(z/sqrt((x*x)+(z*z)))/PI;
     return yaw;
 }
 
@@ -89,11 +178,12 @@ void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float 
     qDot3 = 0.5f * (q0 * gy - q1 * gz + q3 * gx);
     qDot4 = 0.5f * (q0 * gz + q1 * gy - q2 * gx);
 
+
     if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
         recipNorm = invSqrt(ax * ax + ay * ay + az * az);
         ax *= recipNorm;
         ay *= recipNorm;
-        az *= recipNorm;   
+        az *= recipNorm;
 
         recipNorm = invSqrt(mx * mx + my * my + mz * mz);
         mx *= recipNorm;
@@ -143,7 +233,7 @@ void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float 
         qDot3 -= beta * s2;
         qDot4 -= beta * s3;
     }
-
+    
     q0 += qDot1 * (1.0f / sampleFreq);
     q1 += qDot2 * (1.0f / sampleFreq);
     q2 += qDot3 * (1.0f / sampleFreq);
@@ -172,7 +262,7 @@ void MadgwickAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, flo
         recipNorm = invSqrt(ax * ax + ay * ay + az * az);
         ax *= recipNorm;
         ay *= recipNorm;
-        az *= recipNorm;   
+        az *= recipNorm;
 
         _2q0 = 2.0f * q0;
         _2q1 = 2.0f * q1;
@@ -197,7 +287,7 @@ void MadgwickAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, flo
         s1 *= recipNorm;
         s2 *= recipNorm;
         s3 *= recipNorm;
-
+        
         qDot1 -= beta * s0;
         qDot2 -= beta * s1;
         qDot3 -= beta * s2;
@@ -234,12 +324,12 @@ void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az
         recipNorm = invSqrt(ax * ax + ay * ay + az * az);
         ax *= recipNorm;
         ay *= recipNorm;
-        az *= recipNorm;     
+        az *= recipNorm;
 
         recipNorm = invSqrt(mx * mx + my * my + mz * mz);
         mx *= recipNorm;
         my *= recipNorm;
-        mz *= recipNorm;   
+        mz *= recipNorm;
 
         q0q0 = q0 * q0;
         q0q1 = q0 * q1;
@@ -250,7 +340,7 @@ void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az
         q1q3 = q1 * q3;
         q2q2 = q2 * q2;
         q2q3 = q2 * q3;
-        q3q3 = q3 * q3;   
+        q3q3 = q3 * q3;
 
         hx = 2.0f * (mx * (0.5f - q2q2 - q3q3) + my * (q1q2 - q0q3) + mz * (q1q3 + q0q2));
         hy = 2.0f * (mx * (q1q2 + q0q3) + my * (0.5f - q1q1 - q3q3) + mz * (q2q3 - q0q1));
@@ -317,7 +407,7 @@ void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float
         recipNorm = invSqrt(ax * ax + ay * ay + az * az);
         ax *= recipNorm;
         ay *= recipNorm;
-        az *= recipNorm;        
+        az *= recipNorm;
 
         halfvx = q1 * q3 - q0 * q2;
         halfvy = q0 * q1 + q2 * q3;
@@ -371,4 +461,5 @@ float invSqrt(float x) {
     i = 0x5f3759df - (i>>1);
     y = *(float*)&i;
     y = y * (1.5f - (halfx * y * y));
+    return y;
 }
